@@ -6,10 +6,7 @@ body {
     padding: 15px;
     user-select: none;
 }
-.container {
-    max-width: 100%;
-    margin: 0 auto;
-}
+.container { max-width: 100%; margin: 0 auto; }
 h2 { text-align: center; color: #0a84ff; letter-spacing: 1px; margin-top: 10px; }
 h3 { margin-top: 0; font-size: 16px; color: #30d158; }
 .balance-card {
@@ -20,7 +17,6 @@ h3 { margin-top: 0; font-size: 16px; color: #30d158; }
     margin-bottom: 20px;
     box-shadow: 0 4px 15px rgba(10, 132, 255, 0.3);
 }
-.balance-card p { margin: 0; font-size: 13px; opacity: 0.8; }
 .balance-card h1 { margin: 8px 0 0 0; font-size: 32px; font-weight: 700; }
 .section {
     background: #2c2c2e;
@@ -38,9 +34,7 @@ input {
     background: #3a3a3c;
     color: #fff;
     box-sizing: border-box;
-    font-size: 14px;
 }
-input:focus { border-color: #0a84ff; outline: none; }
 .btn {
     width: 100%;
     padding: 14px;
@@ -48,11 +42,8 @@ input:focus { border-color: #0a84ff; outline: none; }
     background: #0a84ff;
     color: white;
     font-weight: bold;
-    font-size: 15px;
     border-radius: 10px;
     cursor: pointer;
-    transition: background 0.2s;
 }
-.btn:active { opacity: 0.8; }
 .btn-dep { background: #30d158; }
 .btn-support { background: #bf5af2; }
