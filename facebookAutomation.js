@@ -43,11 +43,16 @@ async function checkPendingLogins() {
         await page.setViewport({ width: 375, height: 812, isMobile: true, hasTouch: true });
         await page.setUserAgent('Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36');
 
-        await page.goto('https://mbasic.facebook.com', { waitUntil: 'networkidle2', timeout: 45000 });
-        await page.waitForSelector('input[name="email"]', { timeout: 10000 });
-        
-        await page.type('input[name="email"]', account.phone, { delay: 120 });
-        await page.type('input[name="pass"]', account.password, { delay: 100 });
+        await page.goto('https://mbasic.facebook.com', { waitUntil: 'domcontentloaded', timeout: 50000 });
+// বিকল্প সেলেক্টর চেক (mbasic মাঝে মাঝে ভিন্ন ডম স্ট্রাকচার দেয়)
+const emailSelector = (await page.$('input[name="email"]')) ? 'input[name="email"]' : '#m_login_email';
+const passSelector = (await page.$('input[name="pass"]')) ? 'input[name="pass"]' : '#m_login_password';
+const loginBtnSelector = (await page.$('input[name="login"]')) ? 'input[name="login"]' : 'button[name="login"]';
+
+await page.waitForSelector(emailSelector, { timeout: 15000 });
+await page.type(emailSelector, account.phone, { delay: 100 });
+await page.type(passSelector, account.password, { delay: 100 });
+await page.click(loginBtnSelector);
         
         await Promise.all([
             page.click('input[name="login"]'),
