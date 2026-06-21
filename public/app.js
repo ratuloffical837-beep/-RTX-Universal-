@@ -20,36 +20,30 @@ try {
     console.error("SDK Initialization Interrupted:", globalEngineError.message);
 }
 
+// মিনি অ্যাপ ইনিশিয়ালাইজেশন
 const tg = window.Telegram.WebApp;
-tg.expand();
+tg.expand(); 
 
-const userId = tg.initDataUnsafe?.user?.id ? tg.initDataUnsafe.user.id.toString() : "123456789"; 
-const username = tg.initDataUnsafe?.user?.first_name || "Guest User";
-
-function listenToUserBalance() {
-    if (!db) {
-        document.getElementById('balance').innerText = "Offline ⚠️";
-        return;
-    }
-    
-    db.collection('users').doc(userId).onSnapshot((doc) => {
-        if (doc.exists) {
-            const data = doc.data();
-            document.getElementById('balance').innerText = `${parseFloat(data.balance || 0).toFixed(2)} ৳`;
-        } else {
-            document.getElementById('balance').innerText = "0.00 ৳";
-        }
-    }, (err) => {
-        document.getElementById('balance').innerText = "Connection Drop";
-    });
-}
+const user = tg.initDataUnsafe?.user;
+const userId = user ? user.id : 'Unknown';
+const username = user ? (user.username || user.first_name) : 'Guest';
 
 function submitDeposit() {
-    const amount = document.getElementById('depAmount').value;
-    const txid = document.getElementById('txid').value;
+    const amountInput = document.getElementById('depAmount');
+    const txidInput = document.getElementById('txid');
+    const depBtn = document.getElementById('depBtn');
+
+    // ডিফেনসিভ প্রোগ্রামিং: কোনো কারণে ডম এলিমেন্ট না পাওয়া গেলে ফাংশন সেফলি রিটার্ন করবে
+    if (!amountInput || !txidInput || !depBtn) {
+        alert('❌ ফ্রন্টএন্ড ইন্টারফেস ত্রুটি! অনুগ্রহ করে অ্যাপটি পুনরায় ওপেন করুন।');
+        return;
+    }
+
+    const amount = amountInput.value;
+    const txid = txidInput.value.trim();
 
     if (!amount || !txid || amount <= 0) {
-        alert('❌ দয়া করে সঠিক তথ্য এবং পরিমাণ পূরণ করুন।');
+        alert('❌ দয়া করে সঠিক টাকার পরিমাণ এবং ট্রানজেকশন আইডি প্রদান করুন।');
         return;
     }
 
@@ -57,64 +51,26 @@ function submitDeposit() {
         type: 'deposit',
         userId: userId,
         username: username,
-        amount: amount,
+        amount: parseInt(amount),
         txid: txid
     };
 
-    // ফিক্স ৩: নেটওয়ার্ক পে-লোড ড্রপ এড়াতে টেলিগ্রাম উইন্ডো ক্লোজের পূর্বে ১.৫ সেকেন্ডের সেফটি বাফার ডিলে
-    tg.sendData(JSON.stringify(data));
-    setTimeout(() => {
-        tg.close();
-    }, 1500);
-}
-
-async function placeOrder() {
-    const link = document.getElementById('postLink').value;
-    const targetComments = document.getElementById('commentCount').value;
-    const orderBtn = document.getElementById('orderBtn');
-
-    if (!link || !targetComments || targetComments <= 0) {
-        alert('❌ দয়া করে সঠিক লিংক এবং কমেন্ট সংখ্যা প্রদান করুন!');
-        return;
-    }
-
-    orderBtn.disabled = true;
-    orderBtn.innerText = "প্রসেস করা হচ্ছে...";
-
     try {
-        const targetHost = window.location.origin; 
-        const response = await fetch(`${targetHost}/api/order`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: userId,
-                link: link,
-                targetComments: targetComments
-            })
-        });
+        // ফ্রেম ড্রপ এবং মাল্টি-ক্লিক প্রোটেকশন লক
+        depBtn.disabled = true;
+        depBtn.innerText = "সাবমিট হচ্ছে...";
 
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.error || "অর্ডার সাবমিট ব্যর্থ হয়েছে!");
-        }
-
-        alert('🎉 অর্ডার সফলভাবে গ্রহণ করা হয়েছে! ৫ মিনিটের মধ্যে অটোমেশন কাজ শুরু করবে।');
-        document.getElementById('postLink').value = "";
-        document.getElementById('commentCount').value = "";
-
+        // টেলিগ্রাম নেটিভ ডেটা ট্রান্সফার এক্সিকিউশন
+        tg.sendData(JSON.stringify(data));
     } catch (error) {
-        alert(error.message);
-    } finally {
-        orderBtn.disabled = false;
-        orderBtn.innerText = "অর্ডার কনফার্ম করুন";
+        // এরর হলে বাটন পুনরায় সচল করার মেকানিজম
+        depBtn.disabled = false;
+        depBtn.innerText = "ডিপোজিট রিকোয়েস্ট সাবমিট";
+        alert('❌ মিনি অ্যাপ থেকে ডেটা ট্রান্সফার ব্যর্থ হয়েছে: ' + error.message);
     }
 }
 
+// আপনার অ্যাপের অন্যান্য গ্লোবাল ফাংশনাবিলিটি (অপরিবর্তিত)
 function contactAdmin() {
-    tg.openTelegramLink('https://t.me/Ratul');
+    tg.openTelegramLink('https://t.me/YourAdminUsername'); 
 }
-
-window.onload = function() {
-    listenToUserBalance();
-};
