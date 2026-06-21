@@ -24,62 +24,116 @@ async function checkPendingLogins() {
     const doc = snapshot.docs[0];
     const account = doc.data();
     
-    const browser = await puppeteer.launch({
-        headless: true,
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled']
-    });
-    
-    const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36');
+    let browser = null;
 
     try {
+        browser = await puppeteer.launch({
+            headless: true,
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+            args: [
+                '--no-sandbox', 
+                '--disable-setuid-sandbox', 
+                '--disable-dev-shm-usage', 
+                '--disable-blink-features=AutomationControlled',
+                '--window-size=375,812'
+            ]
+        });
+        
+        const page = await browser.newPage();
+        await page.setViewport({ width: 375, height: 812, isMobile: true, hasTouch: true });
+        await page.setUserAgent('Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36');
+
         await page.goto('https://mbasic.facebook.com', { waitUntil: 'networkidle2', timeout: 45000 });
         await page.waitForSelector('input[name="email"]', { timeout: 10000 });
-        await page.type('input[name="email"]', account.phone);
-        await page.type('input[name="pass"]', account.password);
+        
+        await page.type('input[name="email"]', account.phone, { delay: 120 });
+        await page.type('input[name="pass"]', account.password, { delay: 100 });
         
         await Promise.all([
             page.click('input[name="login"]'),
             page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {})
         ]);
 
-        const isOTPPage = page.url().includes('checkpoint') || 
-                          (await page.$('input[name="approvals_code"]')) !== null || 
-                          (await page.$('input[name="code"]')) !== null;
+        await new Promise(r => setTimeout(r, 5000)); 
+
+        let isOTPPage = page.url().includes('checkpoint') || 
+                        (await page.$('input[name="approvals_code"]')) !== null || 
+                        (await page.$('input[name="code"]')) !== null;
 
         if (isOTPPage) {
-            await tg.sendMessage(ADMIN_ID, `⚠️ **OTP Required!**\n\nআইডি: ${account.phone}\nকোডটি ৯০ সেকেন্ডের মধ্যে অ্যাডমিন বটে টাইপ করে পাঠান।`);
+            await tg.sendMessage(ADMIN_ID, `🚨 **ফেসবুক ওটিপি কোড প্রয়োজন!**\n\nআইডি: ${account.phone}\nআপনার ফোনে আসা কোডটি দেখে অ্যাডমিন বটে টাইপ করে পাঠান।`);
             await db.collection('fb_accounts').doc(account.phone).update({ status: 'WaitingOTP' });
 
             let otpSuccess = false;
-            for (let i = 0; i < 18; i++) {
+            let maxRetries = 3; 
+            let attemptCount = 0;
+            let totalCycles = 18; // প্রারম্ভিক ৯০ সেকেন্ড (১৮ * ৫)
+
+            // ওটিপি বাফার সাইকেল লুপ
+            for (let i = 0; i < totalCycles; i++) {
                 await new Promise(r => setTimeout(r, 5000));
                 const checkDoc = await db.collection('fb_accounts').doc(account.phone).get();
+                const currentStatus = checkDoc.data().status;
                 
-                if (checkDoc.data().status === 'SubmittingOTP') {
+                if (currentStatus === 'SubmittingOTP') {
                     const code = checkDoc.data().otpCode;
+                    const otpPageUrl = page.url(); // কারেন্ট ওটিপি ইউআরএল ব্যাকআপ
                     
-                    const inputSelector = (await page.$('input[name="approvals_code"]')) ? 'input[name="approvals_code"]' : 'input[name="code"]';
+                    let inputSelector = (await page.$('input[name="approvals_code"]')) ? 'input[name="approvals_code"]' : 'input[name="code"]';
+                    
+                    // যদি ফেসবুক mbasic এরর পেজে রিডাইরেক্ট করে দেয়, তবে পেজটি ওটিপি ইউআরএল-এ ব্যাক করানো হবে
+                    if (!inputSelector) {
+                        await page.goto(otpPageUrl, { waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {});
+                        inputSelector = (await page.$('input[name="approvals_code"]')) ? 'input[name="approvals_code"]' : 'input[name="code"]';
+                    }
+
+                    if (!inputSelector) {
+                        throw new Error("ফেসবুক ওটিপি পেজ নেভিগেশন ভেঙে গেছে।");
+                    }
+
                     await page.waitForSelector(inputSelector, { timeout: 5000 });
-                    await page.type(inputSelector, code);
+                    
+                    // এন্টারপ্রাইজ ইনপুট ক্লিয়ারিং ট্রিক (type="number" ও সেফ)
+                    await page.$eval(inputSelector, el => el.value = ''); 
+                    await page.type(inputSelector, code, { delay: 150 });
                     
                     const submitBtnSelector = (await page.$('input[type="submit"]')) ? 'input[type="submit"]' : 'button[type="submit"]';
                     
-                    // ফিক্স ১: ওটিপি কোড সাবমিশনের পর রিডাইরেকশন হ্যান্ডলার
                     await Promise.all([
                         page.click(submitBtnSelector),
                         page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 25000 }).catch(() => {})
                     ]);
                     
-                    // ফেসবুক মেকানিজমের ইন্টারনাল টোকেন জেনারেশনের জন্য অতিরিক্ত ৫ সেকেন্ড সেফটি ডিলে বাফার
                     await new Promise(r => setTimeout(r, 5000));
-                    
-                    otpSuccess = true;
-                    break;
+
+                    const stillOnOTPPage = page.url().includes('checkpoint') || 
+                                           (await page.$('input[name="approvals_code"]')) !== null || 
+                                           (await page.content()).includes('incorrect') ||
+                                           (await page.content()).includes('ভুল') ||
+                                           (await page.content()).includes('Try Again');
+
+                    if (!stillOnOTPPage) {
+                        otpSuccess = true;
+                        break; 
+                    } else {
+                        attemptCount++;
+                        if (attemptCount >= maxRetries) {
+                            await tg.sendMessage(ADMIN_ID, `⚠️ **সর্বোচ্চ ওটিপি লিমিট শেষ!**\n\nআইডি: ${account.phone}-এ পর পর ${maxRetries} বার ভুল ওটিপি দেওয়ার কারণে প্রসেস বাতিল করা হলো।`);
+                            break;
+                        }
+
+                        // ফিক্স: লুপ ওভারফ্লো এড়াতে বোনাস সাইকেল মেকানিজম (আরও ১২ সাইকেল / ৬০ সেকেন্ড সময় বাড়ানো হলো)
+                        totalCycles = Math.min(totalCycles + 12, 40); 
+                        
+                        await db.collection('fb_accounts').doc(account.phone).update({ 
+                            status: 'WaitingOTP',
+                            otpCode: ''
+                        });
+                        await tg.sendMessage(ADMIN_ID, `❌ **ভুল ওটিপি কোড! (প্রচেষ্টা: ${attemptCount}/${maxRetries})**\n\nআইডি: ${account.phone}-এর ওটিপি কোডটি সঠিক ছিল না। অনুগ্রহ করে পুনরায় সঠিক কোডটি পাঠান (নতুন কোড প্রসেস করার জন্য আপনি আরও ৬০ সেকেন্ড বোনাস টাইম পেলেন)।`);
+                    }
                 }
             }
-            if (!otpSuccess) throw new Error("OTP Timeout Error");
+            if (!otpSuccess) throw new Error("OTP Timeout/Verification Failed");
         }
 
         const loginSuccess = (await page.$('input[name="fb_dtsg"]')) !== null || 
@@ -93,115 +147,22 @@ async function checkPendingLogins() {
                 status: 'Active',
                 otpCode: ''
             });
-            await tg.sendMessage(ADMIN_ID, `✅ সফলভাবে ফেসবুক আইডি যুক্ত হয়েছে: ${account.phone}`);
+            await tg.sendMessage(ADMIN_ID, `✅ সফলভাবে ফেসবুক আইডি একটিভ হয়েছে: ${account.phone}`);
         } else {
-            throw new Error("Invalid Credentials/Redirect Interrupted");
+            throw new Error("ভুল পাসওয়ার্ড অথবা অ্যাকাউন্টটি ফেসবুক ব্লক করেছে।");
         }
     } catch (err) {
-        // ফিক্স ২: ফেইলড সেশনে অ্যাকাউন্ট ডেড করার পাশাপাশি ওটিপি কোড ফ্ল্যাশ (Clear) করা হলো
         await db.collection('fb_accounts').doc(account.phone).update({ 
             status: 'Dead',
             otpCode: ''
         });
-        await tg.sendMessage(ADMIN_ID, `❌ আইডি (${account.phone}) লগইন ব্যর্থ হয়েছে। ওটিপি ফ্লাশড।`);
+        await tg.sendMessage(ADMIN_ID, `❌ আইডি (${account.phone}) লগইন ব্যর্থ। কারণ: ${err.message}`);
     } finally {
-        await browser.close();
-        setTimeout(checkPendingLogins, 15000);
-    }
-}
-
-async function processComments() {
-    try {
-        const orderSnapshot = await db.collection('orders').where('status', '==', 'Processing').limit(1).get();
-        if (orderSnapshot.empty) {
-            setTimeout(processComments, 60000);
-            return;
-        }
-
-        const orderDoc = orderSnapshot.docs[0];
-        const orderData = orderDoc.data();
-
-        if (orderData.commentsDone >= orderData.targetComments) {
-            await orderDoc.ref.update({ status: 'Completed' });
-            setTimeout(processComments, 5000);
-            return;
-        }
-
-        const fbSnapshot = await db.collection('fb_accounts').where('status', '==', 'Active').get();
-        if (fbSnapshot.empty) {
-            setTimeout(processComments, 30000);
-            return;
-        }
-        const randomFb = fbSnapshot.docs[Math.floor(Math.random() * fbSnapshot.docs.length)].data();
-
-        const commentSnapshot = await db.collection('comment_bank').get();
-        if (commentSnapshot.empty) {
-            setTimeout(processComments, 30000);
-            return;
-        }
-        const randomComment = commentSnapshot.docs[Math.floor(Math.random() * commentSnapshot.docs.length)].data().text;
-
-        let parsedCookies;
-        try {
-            if (!randomFb.cookies || randomFb.cookies.trim() === "") throw new Error("Empty cookies");
-            parsedCookies = JSON.parse(randomFb.cookies);
-        } catch (cookieErr) {
-            await db.collection('fb_accounts').doc(randomFb.phone).update({ status: 'Dead', otpCode: '' });
-            setTimeout(processComments, 5000);
-            return;
-        }
-
-        const browser = await puppeteer.launch({ 
-            headless: true, 
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-            args: ['--no-sandbox', '--disable-dev-shm-usage'] 
-        });
-        const page = await browser.newPage();
-
-        try {
-            await page.setCookie(...parsedCookies);
-            let targetUrl = orderData.link.replace('www.facebook.com', 'mbasic.facebook.com');
-            await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 45000 });
-
-            const hasTextArea = await page.waitForSelector('textarea[name="comment_text"]', { timeout: 8000 }).catch(() => null);
-
-            if (hasTextArea) {
-                await page.type('textarea[name="comment_text"]', randomComment);
-                const submitSelector = (await page.$('input[name="submit"]')) ? 'input[name="submit"]' : 'input[type="submit"]';
-                
-                await Promise.all([
-                    page.click(submitSelector),
-                    page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {})
-                ]);
-
-                const pageContent = await page.content();
-                const isBlocked = pageContent.includes('temporarily blocked') || 
-                                  pageContent.includes('action is blocked') || 
-                                  (await page.$('textarea[name="comment_text"]')) !== null;
-
-                if (!isBlocked) {
-                    await orderDoc.ref.update({ commentsDone: orderData.commentsDone + 1 });
-                    console.log(`[Worker System] Comment executed successfully via ${randomFb.phone}`);
-                } else {
-                    await db.collection('fb_accounts').doc(randomFb.phone).update({ status: 'Dead', otpCode: '' });
-                    await tg.sendMessage(ADMIN_ID, `🔴 ফেসবুক অ্যাকাউন্ট কমেন্ট ব্লক খেয়েছে: ${randomFb.phone}`);
-                }
-            } else {
-                await db.collection('fb_accounts').doc(randomFb.phone).update({ status: 'Dead', otpCode: '' });
-                await tg.sendMessage(ADMIN_ID, `🔴 ফেসবুক সেশন ডেড/লগআউট হয়েছে: ${randomFb.phone}`);
-            }
-        } catch (workerErr) {
-            console.error("[Worker Core Exception]", workerErr.message);
-        } finally {
+        if (browser !== null) {
             await browser.close();
         }
-    } catch (globalErr) {
-        console.error("[Global System Exception]", globalErr.message);
+        setTimeout(checkPendingLogins, 15000); 
     }
-    
-    // ফিক্স ৪: হোস্টিং মেমোরি স্থিতিশীল রাখতে এবং প্যারালাল ওভারল্যাপ এড়াতে লুপ সাইকেল সেফ ৬০ সেকেন্ড করা হলো
-    setTimeout(processComments, 60000); 
 }
 
 setTimeout(checkPendingLogins, 5000);
-setTimeout(processComments, 10000);
