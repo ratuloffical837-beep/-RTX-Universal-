@@ -1,7 +1,6 @@
 {
-  "name": "rtx-smm-panel-v3-2",
-  "version": "3.2.0",
-  "description": "Enterprise SMM Panel with Session Flashing, Dynamic Redirection Catchers and Native Sandbox Buffers",
+  "name": "rtx-smm-panel-v3",
+  "version": "3.3.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -9,7 +8,7 @@
   "dependencies": {
     "express": "^4.19.2",
     "firebase-admin": "^12.1.1",
-    "telegraf": "^4.16.3",
+    "telegraf": "^4.22.0",
     "puppeteer": "^22.10.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
