@@ -1,43 +1,46 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RTX SMM Dashboard Pro</title>
+    <title>RTX SMM Terminal</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <div class="container">
-        <h2>RTX SMM PANEL</h2>
+    <div class="terminal-container">
+        <div class="user-profile">
+            <img id="userAvatar" src="" alt="👾">
+            <span id="userName">ROOT@USER</span>
+        </div>
+
+        <div class="crypto-card">
+            <p>>_ CURRENT_BALANCE</p>
+            <h1 id="balance">0.00 BDT</h1>
+        </div>
+
+        <button class="btn-terminal btn-glow" onclick="toggleSection('depositSection')">[+] DEPOSIT SYSTEM</button>
         
-        <div class="balance-card">
-            <p>আপনার অ্যাকাউন্ট ব্যালেন্স</p>
-            <h1 id="balance">⏳ লোড হচ্ছে...</h1>
-        </div>
-
-        <div class="section">
-            <h3>🚀 ইনস্ট্যান্ট কমেন্ট অর্ডার</h3>
-            <input type="text" id="postLink" placeholder="ফেসবুক পোস্ট বা ভিডিও লিংক">
-            <input type="number" id="commentCount" placeholder="কমেন্টের সংখ্যা (প্রতি কমেন্ট ২ টাকা)">
-            <button class="btn" id="orderBtn" onclick="placeOrder()">অর্ডার কনফার্ম করুন</button>
-        </div>
-
-        <div class="section">
-            <h3>💰 ম্যানুয়াল ডিপোজিট গেটওয়ে</h3>
-            <p style="font-size:12px; color:#ff9500; text-align:center; font-weight:bold; margin-bottom: 12px;">বিকাশ/নগদ: 01725218874X</p>
-            <input type="number" id="depAmount" placeholder="টাকার পরিমাণ (৳)">
+        <div id="depositSection" class="section hidden">
+            <p class="notice">🗣️ বিকাশ/নগদ পার্সোনাল: 017XXXXXXXX</p>
+            <input type="number" id="depAmount" placeholder="টাকার পরিমাণ (BDT)">
+            <input type="text" id="userPhone" placeholder="আপনার বিকাশ/নগদ নম্বর">
             <input type="text" id="txid" placeholder="Transaction ID (TxID)">
-            <button class="btn btn-dep" id="depBtn" onclick="submitDeposit()">ডিপোজিট রিকোয়েস্ট সাবমিট</button>
+            <button class="btn-action pulse" onclick="submitDeposit()">SUBMIT TRANSACTION</button>
         </div>
 
-        <div class="section">
-            <button class="btn btn-support" onclick="contactAdmin()">💬 লাইভ কাস্টমার সাপোর্ট</button>
+        <button class="btn-terminal btn-glow" onclick="toggleSection('orderSection')">[+] COMMENT AUTOMATION</button>
+        
+        <div id="orderSection" class="section hidden">
+            <input type="text" id="postLink" placeholder="ফেসবুক পোস্ট/ভিডিও লিংক">
+            <input type="number" id="commentCount" placeholder="কমেন্টের সংখ্যা (১ কমেন্ট = ২ টাকা)">
+            <button class="btn-action" id="orderBtn" onclick="placeOrder()">CONFIRM EXPLOIT ORDER</button>
         </div>
+
+        <button class="btn-terminal btn-support" onclick="contactAdmin()">💬 CONTACT OPERATOR (SUPPORT)</button>
     </div>
-    
     <script src="app.js"></script>
 </body>
-                </html>
+</html>
