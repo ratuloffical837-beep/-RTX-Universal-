@@ -6,9 +6,7 @@ body {
     padding: 15px;
     user-select: none;
 }
-.terminal-container {
-    max-width: 100%;
-}
+.terminal-container { max-width: 100%; }
 .user-profile {
     display: flex;
     align-items: center;
@@ -23,10 +21,7 @@ body {
     border-radius: 50%;
     border: 1px solid #00ff41;
 }
-#userName {
-    font-weight: bold;
-    font-size: 14px;
-}
+#userName { font-weight: bold; font-size: 14px; }
 .crypto-card {
     background: #000;
     border: 1px solid #00ff41;
@@ -38,7 +33,6 @@ body {
 }
 .crypto-card p { margin: 0; font-size: 12px; }
 .crypto-card h1 { margin: 5px 0 0 0; font-size: 30px; text-shadow: 0 0 10px #00ff41; }
-
 .btn-terminal {
     width: 100%;
     padding: 14px;
@@ -49,17 +43,9 @@ body {
     text-align: left;
     margin-bottom: 10px;
     cursor: pointer;
-    border-radius: 3px;
 }
-.btn-glow:active { box-shadow: 0 0 10px #00ff41; }
 .btn-support { color: #bc34fa; border-color: #bc34fa; }
-
-.section {
-    background: #141414;
-    border-left: 2px solid #00ff41;
-    padding: 15px;
-    margin-bottom: 15px;
-}
+.section { background: #141414; border-left: 2px solid #00ff41; padding: 15px; margin-bottom: 15px; }
 .hidden { display: none; }
 input {
     width: 100%;
@@ -71,13 +57,6 @@ input {
     box-sizing: border-box;
 }
 input:focus { outline: 1px solid #00ff41; }
-.btn-action {
-    width: 100%;
-    padding: 12px;
-    background: #00ff41;
-    color: #000;
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-}
+.btn-action { width: 100%; padding: 12px; background: #00ff41; color: #000; font-weight: bold; border: none; cursor: pointer; }
+.btn-action:disabled { background: #1a5c29; color: #666; cursor: not-allowed; }
 .notice { font-size: 11px; color: #ffb300; text-align: center; margin: 0 0 10px 0; }
