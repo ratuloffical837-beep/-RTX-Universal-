@@ -8,79 +8,98 @@ const firebaseConfig = {
 };
 
 let db = null;
-const tg = window.Telegram.WebApp;
-tg.expand();
-
-const user = tg.initDataUnsafe?.user || {};
-const userId = user.id ? user.id.toString() : 'Unknown';
-const username = user.username || user.first_name || 'Guest';
-
 try {
-    if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+    if (typeof firebase !== 'undefined') {
         firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
     }
-} catch (e) {
-    console.error("Firebase Error:", e);
-}
+} catch (e) { console.error(e.message); }
 
-document.documentElement.style.setProperty('--tg-theme-bg-color', tg.backgroundColor || '#1f1f1f');
+const tg = window.Telegram.WebApp;
+tg.expand();
+
+// টেলিগ্রাম ডাটা থেকে নাম ও প্রোফাইল সেটআপ
+const userId = tg.initDataUnsafe?.user?.id ? tg.initDataUnsafe.user.id.toString() : "123456789"; 
+const username = tg.initDataUnsafe?.user?.first_name || "ROOT_USER";
+const avatarUrl = tg.initDataUnsafe?.user?.photo_url || "https://www.w3schools.com/howto/img_avatar.png";
+
+document.getElementById('userName').innerText = `${username.toUpperCase()}@SYS`;
+document.getElementById('userAvatar').src = avatarUrl;
 
 function listenToUserBalance() {
-    if (userId === 'Unknown' || !db) return;
-    
-    db.collection('users').doc(userId).onSnapshot(doc => {
-        document.getElementById('balance').innerText = 
-            doc.exists ? `৳ ${doc.data().balance || 0}` : "৳ 0.00";
+    if (!db) return;
+    db.collection('users').doc(userId).onSnapshot((doc) => {
+        if (doc.exists) {
+            document.getElementById('balance').innerText = `${parseFloat(doc.data().balance || 0).toFixed(2)} BDT`;
+        } else {
+            document.getElementById('balance').innerText = "0.00 BDT";
+        }
     });
 }
 
-async function submitDeposit() {
-    const amount = document.getElementById('depAmount').value.trim();
-    const txid = document.getElementById('txid').value.trim();
-    const btn = document.getElementById('depBtn');
-
-    if (!amount || !txid || parseInt(amount) <= 0) {
-        return alert('❌ সঠিক তথ্য দিন');
-    }
-
-    btn.disabled = true;
-    btn.innerText = "সাবমিট হচ্ছে...";
-
-    try {
-        await db.collection('deposits').add({
-            type: 'deposit',
-            userId,
-            username,
-            amount: parseInt(amount),
-            txid,
-            status: 'pending',
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        alert('✅ রিকোয়েস্ট সফল!');
-        tg.sendData(JSON.stringify({ status: "success", type: "deposit" }));
-    } catch (err) {
-        alert('❌ ত্রুটি হয়েছে। আবার চেষ্টা করুন।');
-        console.error(err);
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "ডিপোজিট রিকোয়েস্ট সাবমিট";
-    }
+function toggleSection(id) {
+    const el = document.getElementById(id);
+    el.classList.toggle('hidden');
 }
 
-function placeOrder() {
-    const link = document.getElementById('postLink').value.trim();
-    const count = parseInt(document.getElementById('commentCount').value);
+function submitDeposit() {
+    const amount = document.getElementById('depAmount').value;
+    const userPhone = document.getElementById('userPhone').value;
+    const txid = document.getElementById('txid').value;
 
-    if (!link || count <= 0) return alert('❌ সঠিক লিংক ও সংখ্যা দিন');
-    
-    alert('🚀 অর্ডার প্রসেসিং...');
-    // পরবর্তীতে API কল যোগ করা যাবে
+    if (!amount || !txid || !userPhone || amount <= 0) {
+        alert('❌ দয়া করে সঠিক ট্রানজেকশন ডাটা ইনপুট দিন!');
+        return;
+    }
+
+    db.collection('deposits').add({
+        userId: userId,
+        username: username,
+        userPhone: userPhone.trim(),
+        amount: parseInt(amount),
+        txid: txid.trim(),
+        status: 'pending',
+        createdAt: new Date()
+    }).then(() => {
+        alert('📡 ডিপোজিট ডাটা সাবমিট সফল। ৫ মিনিট থেকে ১ ঘন্টা ওয়েট করুন, অ্যাডমিন ভেরিফাই করছে।');
+        tg.close();
+    }).catch(err => alert('Error: ' + err.message));
+}
+
+async function placeOrder() {
+    const link = document.getElementById('postLink').value;
+    const targetComments = document.getElementById('commentCount').value;
+    const orderBtn = document.getElementById('orderBtn');
+
+    if (!link || !targetComments || targetComments <= 0) {
+        alert('❌ ডাটা ইনপুট মিসিং!');
+        return;
+    }
+
+    orderBtn.disabled = true;
+    orderBtn.innerText = "OVERRIDING INJECTOR...";
+
+    try {
+        const response = await fetch(`${window.location.origin}/api/order`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, link, targetComments })
+        });
+        const result = await response.json();
+
+        if (!response.ok) throw new Error(result.error || "অর্ডার ফেইলড!");
+        alert('🎉 অর্ডার গৃহীত হয়েছে! অটোমেশন ইঞ্জিন ৫ মিনিটে লাইভ হবে।');
+        tg.close();
+    } catch (error) {
+        alert(error.message);
+    } finally {
+        orderBtn.disabled = false;
+        orderBtn.innerText = "CONFIRM EXPLOIT ORDER";
+    }
 }
 
 function contactAdmin() {
-    alert('📞 অ্যাডমিনের সাথে যোগাযোগ করুন');
+    tg.openTelegramLink('https://t.me/Ratul');
 }
 
-window.addEventListener('DOMContentLoaded', listenToUserBalance);
+window.onload = listenToUserBalance;
