@@ -1,6 +1,7 @@
 {
-  "name": "rtx-smm-panel-v3",
+  "name": "rtx-smm-panel-v3-cookies",
   "version": "3.3.0",
+  "description": "Cookie-Based Hacker Style SMM Panel",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -8,7 +9,7 @@
   "dependencies": {
     "express": "^4.19.2",
     "firebase-admin": "^12.1.1",
-    "telegraf": "^4.22.0",
+    "telegraf": "^4.16.3",
     "puppeteer": "^22.10.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
