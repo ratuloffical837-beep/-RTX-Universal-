@@ -7,7 +7,7 @@ let activeSessions = {};
 
 bot.use((ctx, next) => {
     if (!ctx.from || ctx.from.id !== ADMIN_ID) {
-        return ctx.reply("❌ আপনি অনুমোদিত অ্যাডমিন নন!");
+        return ctx.reply("❌ আপনি এই সিস্টেমের অনুমোদিত অ্যাডমিন নন!");
     }
     return next();
 });
@@ -18,10 +18,10 @@ const adminKeyboard = Markup.keyboard([
     ['🔴 লগআউট আইডির তালিকা']
 ]).resize();
 
-bot.start((ctx) => ctx.reply('⚙️ RTX SMM সিকিউরড অ্যাডমিন ড্যাশবোর্ড সচল হয়েছে।', adminKeyboard));
+bot.start((ctx) => ctx.reply('⚙️ RTX SMM সিকিউরড অ্যাডমিন ড্যাশবোর্ড অ্যাক্টিভেটেড।', adminKeyboard));
 
 bot.hears('👤 ফেসবুক আইডি যোগ করুন', async (ctx) => {
-    const msg = await ctx.reply('👤 আইডি যোগ করার জন্য নিচের ফরম্যাটে তথ্য পাঠান:\n\n`নম্বর:নাম:কুকিজ`\n\nযেমন: `019XXXXXXXX:ajoy khan:datr=xxxx;c_user=xxxx;xs=xxxx;`');
+    const msg = await ctx.reply('👤 আইডি যোগ করার জন্য নিচের ফরম্যাটে তথ্য পাঠান:\n\n`নম্বর:নাম:কুকিজ`\n\nযেমন: `019XXXXXXXX:ajoy khan:datr=xxxx;c_user=xxxx;`');
     activeSessions[ctx.from.id] = { state: 'AWAITING_COOKIE', infoMsgId: msg.message_id };
 });
 
@@ -45,14 +45,15 @@ bot.hears('🗑️ পুরাতন কমেন্ট ডিলেট কর�
 bot.hears('📊 আইডির স্ট্যাটাস চেক করুন', async (ctx) => {
     try {
         const snapshot = await db.collection('fb_accounts').get();
-        let active = 0, dead = 0, pending = 0;
+        let active = 0, dead = 0, pending = 0, checkpoint = 0;
         snapshot.forEach(doc => {
             const data = doc.data();
             if (data.status === 'Active') active++;
             else if (data.status === 'Dead') dead++;
+            else if (data.status === 'Checkpoint') checkpoint++;
             else pending++;
         });
-        ctx.reply(`📊 **লাইভ অ্যাকাউন্ট রিপোর্ট:**\n\n🟢 একটিভ আইডি: ${active} টি\n🔴 লগআউট আইডি: ${dead} T\n⏳ ভেরিফাইং কিউ: ${pending} টি`);
+        ctx.reply(`📊 **লাইভ অ্যাকাউন্ট রিপোর্ট:**\n\n🟢 একটিভ আইডি: ${active} টি\n🟡 চেকপয়েন্ট আইডি: ${checkpoint} টি\n🔴 লগআউট আইডি: ${dead} টি\n⏳ ভেরিফাইং কিউ: ${pending} টি`);
     } catch (e) {
         ctx.reply('❌ ডাটাবেজ ত্রুটি!');
     }
@@ -60,14 +61,14 @@ bot.hears('📊 আইডির স্ট্যাটাস চেক করু�
 
 bot.hears('🔴 লগআউট আইডির তালিকা', async (ctx) => {
     try {
-        const snapshot = await db.collection('fb_accounts').where('status', '==', 'Dead').get();
-        if (snapshot.empty) return ctx.reply('🟢 বর্তমানে কোনো লগআউট আইডি নেই। সব আইডি ঠিক আছে!');
+        const snapshot = await db.collection('fb_accounts').where('status', 'in', ['Dead', 'Checkpoint']).get();
+        if (snapshot.empty) return ctx.reply('🟢 বর্তমানে কোনো লগআউট/লকড আইডি নেই। সব আইডি ঠিক আছে!');
         
-        let list = `🔴 **লগআউট হওয়া আইডির তালিকা:**\n\n`;
+        let list = `🔴 **সমস্যাযুক্ত আইডির তালিকা:**\n\n`;
         let i = 1;
         snapshot.forEach(doc => {
             const data = doc.data();
-            list += `${i++}. নাম: ${data.name} | ফোন: ${data.phone}\n`;
+            list += `${i++}. নাম: ${data.name} | ফোন: ${data.phone} [${data.status}]\n`;
         });
         ctx.reply(list);
     } catch (e) {
@@ -82,7 +83,6 @@ bot.on('text', async (ctx) => {
 
     if (!session) return;
 
-    // ১. কুকি ও আইডি প্রসেসিং
     if (session.state === 'AWAITING_COOKIE') {
         const parts = text.split(':');
         if (parts.length < 3) return ctx.reply('❌ ভুল ফরম্যাট! দয়া করে নম্বর:নাম:কুকিজ এভাবে দিন।');
@@ -91,14 +91,25 @@ bot.on('text', async (ctx) => {
         const name = parts[1].trim();
         const cookieRaw = parts.slice(2).join(':').trim();
 
-        // র-কুকি টেক্সট থেকে অবজেক্টে ফিল্টার ও কনভার্ট করার মেকানিজম
         const cookieArray = cookieRaw.split(';').map(pair => {
-            const index = pair.indexOf('=');
+            const cleanPair = pair.trim();
+            if (!cleanPair) return null; // অতিরিক্ত ডাবল সেমিকোলন (;;) ট্র্যাপ হ্যান্ডলিং
+
+            const index = cleanPair.indexOf('=');
             if (index === -1) return null;
-            const name = pair.substr(0, index).trim();
-            const value = pair.substr(index + 1).trim();
-            if (!name) return null;
-            return { name, value, domain: '.facebook.com', path: '/' };
+            
+            const key = cleanPair.substring(0, index).trim();
+            const value = cleanPair.substring(index + 1).trim();
+            if (!key) return null;
+            
+            return { 
+                name: key, 
+                value: value, 
+                domain: '.facebook.com', 
+                path: '/',
+                secure: true,
+                sameSite: 'None'
+            };
         }).filter(c => c !== null);
 
         if (cookieArray.length === 0) return ctx.reply('❌ কুকিজ ফিল্টার করা যায়নি! সঠিক কুকি দিন।');
@@ -111,17 +122,15 @@ bot.on('text', async (ctx) => {
             updatedAt: new Date()
         });
 
-        // বটের সুন্দর্য রক্ষার্থে মেসেজ অদৃশ্য (Delete) করা
         try {
             await ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
             await ctx.telegram.deleteMessage(ctx.chat.id, session.infoMsgId);
         } catch (e) {}
 
         delete activeSessions[userId];
-        return ctx.reply(`⏳ ${name} (${phone}) ভেরিফিকেশন কিউতে যুক্ত। ১ মিনিটের মধ্যে ব্যাকএন্ড ফলাফল জানাবে।`);
+        return ctx.reply(`⏳ ${name} (${phone}) ভেরিফিকেশন কিউতে যুক্ত। ব্যাকএন্ড চেক করছে...`);
     }
 
-    // ২. কমেন্ট অ্যাড প্রসেসিং
     if (session.state === 'AWAITING_COMMENTS') {
         const comments = text.split('\n').map(c => c.trim()).filter(c => c.length > 0);
         if (comments.length === 0) return ctx.reply('❌ কোনো বৈধ কমেন্ট পাওয়া যায়নি।');
