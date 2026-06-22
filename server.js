@@ -8,17 +8,16 @@ app.use(express.json());
 
 const db = require('./firebaseConfig.js');
 
-// অটোমেশন স্ক্রিপ্ট ও বট ইঞ্জিন রানিং
+// ব্যাকগ্রাউন্ড থ্রেড ও লুপস ইনিশিয়েলাইজেশন
 require('./adminBot.js');
 require('./userBot.js');
 require('./facebookAutomation.js');
 
-// অর্ডার প্লেস করার API
 app.post('/api/order', async (req, res) => {
     try {
         const { userId, link, targetComments } = req.body;
         if (!userId || !link || !targetComments) {
-            return res.status(400).json({ error: "সবগুলো ফিল্ড পূরণ করা বাধ্যতামূলক!" });
+            return res.status(400).json({ error: "সবগুলো ফিল্ড পূরণ করা বাধ্যতামুলক!" });
         }
 
         const parsedComments = parseInt(targetComments);
@@ -31,11 +30,11 @@ app.post('/api/order', async (req, res) => {
             if (!userDoc.exists) throw new Error("ইউজার অ্যাকাউন্ট ডাটাবেজে নেই! প্রথমে বটে /start দিন।");
 
             const currentBalance = userDoc.data().balance || 0;
-            const costPerComment = 2; // ১ কমেন্ট = ২ টাকা (পয়েন্ট)
+            const costPerComment = 2; 
             const totalCost = parsedComments * costPerComment;
 
             if (currentBalance < totalCost) {
-                throw new Error("❌ আপনার অ্যাকাউন্টে পর্যাপ্ত ব্যালেন্স (পয়েন্ট) নেই!");
+                throw new Error("❌ আপনার অ্যাকাউন্টে পর্যাপ্ত ব্যালেন্স নেই!");
             }
 
             transaction.update(userRef, { balance: currentBalance - totalCost });
@@ -62,5 +61,5 @@ app.post('/api/order', async (req, res) => {
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 app.listen(PORT, () => {
-    console.log(`[Server] Live on port ${PORT}`);
+    console.log(`[Enterprise Gateway] Server Live on port ${PORT}`);
 });
