@@ -1,49 +1,83 @@
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #1c1c1e;
-    color: #ffffff;
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #0d0d0d;
+    color: #00ff41;
     margin: 0;
     padding: 15px;
     user-select: none;
 }
-.container { max-width: 100%; margin: 0 auto; }
-h2 { text-align: center; color: #0a84ff; letter-spacing: 1px; margin-top: 10px; }
-h3 { margin-top: 0; font-size: 16px; color: #30d158; }
-.balance-card {
-    background: linear-gradient(135deg, #0a84ff, #5e5ce6);
-    padding: 25px 15px;
-    border-radius: 16px;
+.terminal-container {
+    max-width: 100%;
+}
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    border-bottom: 1px dashed #00ff41;
+    padding-bottom: 10px;
+}
+#userAvatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    border: 1px solid #00ff41;
+}
+#userName {
+    font-weight: bold;
+    font-size: 14px;
+}
+.crypto-card {
+    background: #000;
+    border: 1px solid #00ff41;
+    padding: 20px 15px;
+    border-radius: 5px;
     text-align: center;
     margin-bottom: 20px;
-    box-shadow: 0 4px 15px rgba(10, 132, 255, 0.3);
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
 }
-.balance-card h1 { margin: 8px 0 0 0; font-size: 32px; font-weight: 700; }
+.crypto-card p { margin: 0; font-size: 12px; }
+.crypto-card h1 { margin: 5px 0 0 0; font-size: 30px; text-shadow: 0 0 10px #00ff41; }
+
+.btn-terminal {
+    width: 100%;
+    padding: 14px;
+    background: #121212;
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    font-weight: bold;
+    text-align: left;
+    margin-bottom: 10px;
+    cursor: pointer;
+    border-radius: 3px;
+}
+.btn-glow:active { box-shadow: 0 0 10px #00ff41; }
+.btn-support { color: #bc34fa; border-color: #bc34fa; }
+
 .section {
-    background: #2c2c2e;
-    padding: 18px;
-    border-radius: 14px;
+    background: #141414;
+    border-left: 2px solid #00ff41;
+    padding: 15px;
     margin-bottom: 15px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
+.hidden { display: none; }
 input {
     width: 100%;
     padding: 12px;
-    margin: 10px 0;
-    border-radius: 10px;
-    border: 1px solid #3a3a3c;
-    background: #3a3a3c;
-    color: #fff;
+    margin: 8px 0;
+    border: 1px solid #333;
+    background: #000;
+    color: #00ff41;
     box-sizing: border-box;
 }
-.btn {
+input:focus { outline: 1px solid #00ff41; }
+.btn-action {
     width: 100%;
-    padding: 14px;
-    border: none;
-    background: #0a84ff;
-    color: white;
+    padding: 12px;
+    background: #00ff41;
+    color: #000;
     font-weight: bold;
-    border-radius: 10px;
+    border: none;
     cursor: pointer;
 }
-.btn-dep { background: #30d158; }
-.btn-support { background: #bf5af2; }
+.notice { font-size: 11px; color: #ffb300; text-align: center; margin: 0 0 10px 0; }
