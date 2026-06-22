@@ -3,6 +3,8 @@ const db = require('./firebaseConfig.js');
 const bot = new Telegraf(process.env.USER_BOT_TOKEN);
 const ADMIN_ID = parseInt(process.env.ADMIN_TELEGRAM_ID);
 
+const startupTime = new Date(); // ব্যাকএন্ড রান হওয়ার কারেন্ট টাইমস্ট্যাম্প ট্র্যাকিং
+
 bot.start(async (ctx) => {
     const userId = ctx.from.id.toString();
     const username = ctx.from.first_name || "User";
@@ -19,8 +21,12 @@ bot.start(async (ctx) => {
     ]));
 });
 
-// ফায়ারবেস ডিপোজিট কালেকশন রিয়েল-টাইম লিসেনার
-db.collection('deposits').where('status', '==', 'pending').onSnapshot((snapshot) => {
+// শুধুমাত্র ব্যাকএন্ড বুট হওয়ার পরের নতুন ডেটার উপর লিসেনার সচল করা হলো
+db.collection('deposits')
+  .where('status', '==', 'pending')
+  .where('createdAt', '>=', startupTime)
+  .onSnapshot((snapshot) => {
+    if (!snapshot) return;
     snapshot.docChanges().forEach(async (change) => {
         if (change.type === 'added') {
             const depData = change.doc.data();
@@ -28,7 +34,7 @@ db.collection('deposits').where('status', '==', 'pending').onSnapshot((snapshot)
 
             try {
                 await bot.telegram.sendMessage(ADMIN_ID, 
-                    `💰 **নতুন ডিপোজিট রিকোয়েস্ট!**\n\n👤 ইউজার: ${depData.username} (ID: ${depData.userId})\n📞 ইউজারের ফোন নম্বর: ${depData.userPhone}\n💵 টাকার পরিমাণ: ${depData.amount} BDT\n🔑 TxID: ${depData.txid}`,
+                    `💰 **নতুন ডিপোজিট রিকোয়েস্ট!**\n\n👤 ইউজার: ${depData.username} (ID: ${depData.userId})\n📞 ফোন: ${depData.userPhone}\n💵 পরিমাণ: ${depData.amount} BDT\n🔑 TxID: ${depData.txid}`,
                     Markup.inlineKeyboard([
                         [
                             Markup.button.callback('✅ Confirm', `approve_${depId}`),
@@ -56,11 +62,10 @@ bot.action(/approve_(.+)/, async (ctx) => {
             let currentBalance = 0;
             if (userDoc.exists) currentBalance = userDoc.data().balance || 0;
 
-            // টাকার সমপরিমাণ পয়েন্ট/ব্যালেন্স যোগ হচ্ছে
             transaction.update(userRef, { balance: currentBalance + amount });
             transaction.update(depRef, { status: 'approved' });
 
-            try { await bot.telegram.sendMessage(userId, `🎉 অভিনন্দন! আপনার পাঠানো ${amount} টাকার রিকোয়েস্ট সফলভাবে কনফার্ম করা হয়েছে এবং সমপরিমাণ পয়েন্ট একাউন্টে যোগ হয়েছে।`); } catch (e) {}
+            try { await bot.telegram.sendMessage(userId, `🎉 অভিনন্দন! আপনার পাঠানো ${amount} টাকার রিকোয়েস্ট সফলভাবে কনফার্ম করা হয়েছে।`); } catch (e) {}
         });
         ctx.editMessageText(`${ctx.update.callback_query.message.text}\n\n🟢 **কনফার্ম করা হয়েছে**`);
     } catch (err) { ctx.reply("❌ ত্রুটি: " + err.message); }
@@ -74,7 +79,7 @@ bot.action(/reject_(.+)/, async (ctx) => {
     if (depDoc.exists && depDoc.data().status === 'pending') {
         const { userId } = depDoc.data();
         await depRef.update({ status: 'rejected' });
-        try { await bot.telegram.sendMessage(userId, `❌ দুঃখিত, আপনার ডিপোজিট রিকোয়েস্টটি সঠিক না থাকায় রিজেক্ট করা হয়েছে।`); } catch (e) {}
+        try { await bot.telegram.sendMessage(userId, `❌ দুঃখিত, আপনার ডিপোজিট রিকোয়েস্টটি রিজেক্ট করা হয়েছে।`); } catch (e) {}
     }
     ctx.editMessageText(`${ctx.update.callback_query.message.text}\n\n🔴 **রিজেক্ট করা হয়েছে**`);
 });
