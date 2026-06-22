@@ -17,9 +17,9 @@ if (!admin.apps.length) {
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
-        console.log("[Firebase] Infrastructure Sync Success.");
+        console.log("[Firebase] Infrastructure Synced Successfully.");
     } catch (error) {
-        console.error("[Firebase Init Error]:", error.message);
+        console.error("[Firebase Initialization Crash]:", error.message);
         process.exit(1);
     }
 }
