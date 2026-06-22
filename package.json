@@ -1,7 +1,7 @@
 {
   "name": "rtx-smm-panel-v3-cookies",
-  "version": "3.3.0",
-  "description": "Cookie-Based Hacker Style SMM Panel",
+  "version": "3.3.2",
+  "description": "Enterprise Cookie-Based SMM Panel Anti-Block Engine",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
