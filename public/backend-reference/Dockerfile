@@ -12,12 +12,10 @@ WORKDIR /usr/src/app
 # Switch to root for installations
 USER root
 
-# নতুন কোড:
-# Copy package files from local directory AND the lock file from main root
+# Copy package.json from the current folder
 COPY package.json ./
-COPY ../../package-lock.json ./ 2>/dev/null || true
 
-# Install dependencies safely
+# Install dependencies safely without package-lock.json
 RUN npm install --omit=dev
 
 # Copy source files
