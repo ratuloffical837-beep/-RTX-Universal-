@@ -301,10 +301,21 @@ bot.catch((err, ctx) => {
   console.error('[User Bot Error]:', err);
 });
 
-// Launch bot
-bot.launch()
-  .then(() => console.log('[User Bot] ✅ Bot started successfully'))
-  .catch(err => console.error('[User Bot] ❌ Launch failed:', err));
+// Launch User Bot with Timeout Fix
+bot.launch({
+  polling: {
+    timeout: 30,
+    limit: 100
+  }
+}).then(() => console.log('[User Bot] ✅ Bot started successfully'))
+  .catch(err => {
+    console.error('[User Bot] ❌ Launch failed, retrying in 5s...', err);
+    setTimeout(() => {
+      bot.launch({ polling: { timeout: 30, limit: 100 } })
+        .then(() => console.log('[User Bot] ✅ Bot started after retry'))
+        .catch(e => console.error('[User Bot] ❌ Retry failed:', e));
+    }, 5000);
+  });
 
 // Graceful shutdown
 process.once('SIGINT', () => bot.stop('SIGINT'));
