@@ -317,10 +317,21 @@ bot.catch((err, ctx) => {
   ctx.reply('❌ একটি ত্রুটি ঘটেছে!');
 });
 
-// Launch bot
-bot.launch()
-  .then(() => console.log('[Admin Bot] ✅ Bot started successfully'))
-  .catch(err => console.error('[Admin Bot] ❌ Launch failed:', err));
+// Launch Admin Bot with Timeout Fix
+bot.launch({
+  polling: {
+    timeout: 30,
+    limit: 100
+  }
+}).then(() => console.log('[Admin Bot] ✅ Bot started successfully'))
+  .catch(err => {
+    console.error('[Admin Bot] ❌ Launch failed, retrying in 5s...', err);
+    setTimeout(() => {
+      bot.launch({ polling: { timeout: 30, limit: 100 } })
+        .then(() => console.log('[Admin Bot] ✅ Bot started after retry'))
+        .catch(e => console.error('[Admin Bot] ❌ Retry failed:', e));
+    }, 5000);
+  });
 
 // Graceful shutdown
 process.once('SIGINT', () => bot.stop('SIGINT'));
