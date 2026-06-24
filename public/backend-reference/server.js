@@ -539,7 +539,7 @@ setTimeout(verifyPendingAccounts, 3000);
 
 // ==================== TELEGRAM BOTS ====================
 // Note: Import these from separate files in production
-// require('./adminBot.js');
-// require('./userBot.js');
+ require('./adminBot.js');
+ require('./userBot.js');
 
 console.log('[RTX SMM] ✅ All systems initialized');
